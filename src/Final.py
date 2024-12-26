@@ -3589,7 +3589,7 @@ button_padding = 5  # Set padding for buttons
 
 ttk.Button(left_frame, text="Load Folder", width=button_width, command=open_folder).pack(pady=10, padx=10)  # Added padx
 ttk.Button(left_frame, text="Load File", width=button_width, command=open_single_file).pack(pady=10, padx=10)  # Added padx
-ttk.Button(left_frame, text="Import Save", width=button_width, command=run_unpacker).pack(pady=10, padx=10)
+ttk.Button(left_frame, text="Import PC Save", width=button_width, command=run_unpacker).pack(pady=10, padx=10)
 
 # Create the "Toggle Theme" button in the left frame at the bottom
 theme_button = ttk.Button(left_frame, text="Toggle Theme", width=button_width, command=toggle_theme)
