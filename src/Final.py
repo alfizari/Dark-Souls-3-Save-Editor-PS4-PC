@@ -121,40 +121,18 @@ bonfire_offsets_for_bonfire_tap = {
     "The Ringed City (DLC)": 30834,
     "Filianore's Rest & Slave Knight Gael": 32114,
 }
-# Set the working directory
 working_directory = os.path.dirname(os.path.abspath(__file__))
 os.chdir(working_directory)
-import sys
-import os
-import json
 
-def get_resource_path(relative_path):
-    """Get the absolute path to a resource, works for dev and for PyInstaller."""
-    if hasattr(sys, '_MEIPASS'):
-        # If running in the bundled PyInstaller environment, use _MEIPASS
-        return os.path.join(sys._MEIPASS, relative_path)
-    else:
-        # If running in the development environment, use the normal path
-        return os.path.join(os.path.abspath("."), relative_path)
-
-def load_and_copy_json(filename):
-    """Load and return the JSON data."""
-    resource_path = get_resource_path(f'Resources/Json/{filename}')
-    try:
-        with open(resource_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data
-    except FileNotFoundError:
-        print(f"Resource file not found: {resource_path}")
-        return None
-    except PermissionError:
-        print(f"Permission denied: {resource_path}")
-        return None
-    
+# load and copy JSON data from files in the working directory
+def load_and_copy_json(file_name):
+    file_path = os.path.join(working_directory, "Resources/Json", file_name)
+    with open(file_path, "r") as file:
+        return json.load(file).copy()
 
 # Load and copy data from JSON files within the specified working directory
 inventory_item_hex_patterns = load_and_copy_json("itemshex.json")
-inventory_replacement_items = inventory_item_hex_patterns
+inventory_replacement_items = inventory_item_hex_patterns.copy()
 
 #for bosses
 bosses_data = load_and_copy_json("Bosses.json")
@@ -166,20 +144,20 @@ npc_data = load_and_copy_json("npc.json")
 bonfire_data = load_and_copy_json("bonfire.json")
 
 inventory_goods_magic_hex_patterns = load_and_copy_json("goods_magic.json")
-replacement_items = inventory_goods_magic_hex_patterns
+replacement_items = inventory_goods_magic_hex_patterns.copy()
 item_hex_patterns = inventory_goods_magic_hex_patterns
 
 inventory_goods_magic_hex_patterns_bulk = load_and_copy_json("goods_magic_bulk.json")
 
 inventory_weapons_hex_patterns = load_and_copy_json("weapons.json")
-weapon_item_patterns = inventory_weapons_hex_patterns
+weapon_item_patterns = inventory_weapons_hex_patterns.copy()
 
 inventory_armor_hex_patterns = load_and_copy_json("armor.json")
 armor_item_patterns = inventory_armor_hex_patterns
-armor_replacement_items = inventory_armor_hex_patterns
+armor_replacement_items = inventory_armor_hex_patterns.copy()
 
 inventory_ring_hex_patterns = load_and_copy_json("ring.json")
-replacement_ring_items = inventory_ring_hex_patterns
+replacement_ring_items = inventory_ring_hex_patterns.copy()
 ring_hex_patterns = inventory_ring_hex_patterns
 
 
@@ -371,22 +349,11 @@ def open_folder():
 
     display_character_names(character_names)
 
-
-def get_resource_path(relative_path):
-    """Get the absolute path to a resource, works for dev and for PyInstaller."""
-    if hasattr(sys, '_MEIPASS'):
-        # Running in a bundled environment
-        return os.path.join(sys._MEIPASS, relative_path)
-    # Running in a normal Python environment
-    return os.path.join(os.path.abspath("."), relative_path)
-
-# Path to the unpacker executable
-exe_path = get_resource_path('Resources/Debug/DS3SaveUnpacker.exe')
-
     
 def run_unpacker():
 
     # Check if the EXE exists
+    exe_path = os.path.join(os.getcwd(), 'Resources', 'Debug', 'DS3SaveUnpacker.exe')
     if not os.path.exists(exe_path):
         print("Error: DS3SaveUnpacker.exe not found!")
         return
