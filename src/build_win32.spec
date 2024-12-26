@@ -2,12 +2,20 @@
 import os
 from glob import glob
 
+# Add Debug folder path
+debug_folder = os.path.join(os.getcwd(), 'src', 'Resources', 'Debug')
+
 a = Analysis(
     ['Final.py'],
     pathex=[os.getcwd()],
     binaries=[],
     datas=[
         (os.path.join(os.getcwd(), 'src', 'Resources'), 'Resources'),
+        # Add Debug folder and its contents
+        (debug_folder, os.path.join('Resources', 'Debug')),
+        # Include all files from Debug folder
+        *[(os.path.join(debug_folder, f), os.path.join('Resources', 'Debug')) 
+          for f in os.listdir(debug_folder) if os.path.isfile(os.path.join(debug_folder, f))]
     ],
     hiddenimports=[],
     hookspath=[],
