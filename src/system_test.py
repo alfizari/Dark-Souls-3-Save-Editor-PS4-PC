@@ -6,7 +6,7 @@ def test_system_compatibility():
     system = platform.system()
     print(f"Detected Operating System: {system}")
     
-    if system == 'Linux':
+    if system in ['Linux', 'Darwin']:  # Darwin is macOS
         try:
             wine_version = subprocess.run(['wine', '--version'], 
                                        capture_output=True, 
@@ -18,7 +18,8 @@ def test_system_compatibility():
             print("Wine is not installed. Please install Wine to run Windows executables.")
             return False
         except FileNotFoundError:
-            print("Wine is not installed or not in PATH. Please install Wine to run Windows executables.")
+            install_cmd = "brew install wine" if system == "Darwin" else "install Wine"
+            print(f"Wine is not installed or not in PATH. Please {install_cmd} to run Windows executables.")
             return False
     else:
         print("Native Windows environment - no Wine needed")
