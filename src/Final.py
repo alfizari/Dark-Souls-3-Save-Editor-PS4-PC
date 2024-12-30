@@ -434,7 +434,7 @@ def replace_file_data(selected_file, selected_name, top):
     original_file_path = file_path_var.get()  # This should be the path of the currently loaded file
 
     if not os.path.exists(original_file_path):
-        print("Error: Original file not found!")
+        print("Error: Load your PS4 Save First!")
         return
 
     try:
