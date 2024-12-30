@@ -10,7 +10,8 @@ from time import time
 import random
 import sys
 import shutil
-
+import platform
+from system_test import test_system_compatibility
 
 #just a flag
 # Constants
@@ -360,8 +361,12 @@ def run_unpacker():
 
     # Run the EXE using subprocess
     try:
-
-        result = subprocess.run([exe_path], check=True, text=True, capture_output=True)
+        if not test_system_compatibility():
+            raise RuntimeError("System is not properly configured to run the executable go ahead and install Wine for your Distro")
+        if platform.system() == 'Linux':
+            result = subprocess.run(['wine', exe_path], check=True, text=True, capture_output=True)
+        else:
+            result = subprocess.run([exe_path], check=True, text=True, capture_output=True)
 
         
         # Define the unpacked folder path
@@ -429,7 +434,7 @@ def replace_file_data(selected_file, selected_name, top):
     original_file_path = file_path_var.get()  # This should be the path of the currently loaded file
 
     if not os.path.exists(original_file_path):
-        print("Error: Original file not found!")
+        print("Error: Load your PS4 Save First!")
         return
 
     try:
