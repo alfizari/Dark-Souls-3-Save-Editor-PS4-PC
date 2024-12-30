@@ -104,6 +104,7 @@ Simply download the appropriate binary for your operating system, then run the e
 #### Prerequisites
 - A decrypted save file.
 - Python 3.x installed on your system.
+- Importing PC Saves on Linux requires Wine to be installed follow the documetation for your Distro for Guidance.
 
 #### Installation
 1. Clone this repository:
