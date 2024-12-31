@@ -362,12 +362,14 @@ def run_unpacker():
     # Run the EXE using subprocess
     try:
         if not test_system_compatibility():
-            raise RuntimeError("System is not properly configured to run the executable go ahead and install Wine for your Distro")
-        if platform.system() == 'Linux':
-            result = subprocess.run(['wine', exe_path], check=True, text=True, capture_output=True)
-        else:
-            result = subprocess.run([exe_path], check=True, text=True, capture_output=True)
+            raise RuntimeError("System is not properly configured to run the executable. Please install Wine for your system.")
+        
+        current_os = platform.system()
 
+        if current_os == 'Linux' or current_os == 'Darwin':  # More explicit syntax
+            result = subprocess.run(['wine', exe_path], check=True, text=True, capture_output=True)
+        else:  # Windows
+            result = subprocess.run([exe_path], check=True, text=True, capture_output=True)
         
         # Define the unpacked folder path
         unpacked_folder = os.path.join(os.getcwd(), 'UnpackedFiles')

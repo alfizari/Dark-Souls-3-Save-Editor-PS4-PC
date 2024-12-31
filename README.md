@@ -105,7 +105,8 @@ Simply download the appropriate binary for your operating system, then run the e
 - A decrypted save file.
 - Python 3.x installed on your system.
 - Importing PC Saves on Linux requires Wine to be installed follow the documetation for your Distro for Guidance.
-
+- Importing PC Saves on MacOS requires Wine to be installed via Homebrew.
+S
 #### Installation
 1. Clone this repository:
    ```bash
