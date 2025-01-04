@@ -450,25 +450,32 @@ def replace_file_data(selected_file, selected_name, top):
             # Define the value to be written as bytes
             value = bytes.fromhex('62 00 00 00 62 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 01')
             offset1 = find_last_hex_offset(original_file_path, very_last_fixed_pattern)
-            offset2 = offset1 + 12
+            
+            # First case: pattern found, write value and delete bytes
             if offset1 is not None:
+                offset2 = offset1 + 12
                 file.seek(offset2)  # Move to the offset position
                 file.write(value)  # Write the bytes directly
+                delete_first_4_bytes(file)
+                load_file_data(original_file_path)
 
-            # Delete the first 4 bytes
-            delete_first_4_bytes(file)
-        
-        # Reload file data after modification
-        load_file_data(original_file_path)
+                # Show success message
+                import_message_var.set(f"Character '{selected_name}' imported successfully!")
+                top.destroy()
+            
+            # Second case: pattern not found, only delete bytes
+            else:
+                delete_first_4_bytes(file)
+                load_file_data(original_file_path)
 
-        # Show a message saying the character was imported
-        import_message_var.set(f"Character '{selected_name}' imported successfully!")
-
-        # Close the Toplevel window after replacement
-        top.destroy()
+                # Show message about missing steam ID
+                import_message_var.set(f"Character '{selected_name}' imported successfully!")
+                messagebox.showinfo("Save imported", "This is an old version save, some of the editor features may not work properly. load the save in your PS4 to update the save to the latest version.")
+                top.destroy()
 
     except Exception as e:
         print(f"Error occurred while replacing file data: {e}")
+        messagebox.showerror("Error", f"An error occurred: {str(e)}")
 
 
 def display_character_names(character_names):
