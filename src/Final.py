@@ -12,7 +12,7 @@ import sys
 import shutil
 import platform
 from system_test import test_system_compatibility
-
+import struct
 #just a flag
 # Constants
 hex_pattern1_Fixed = '00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00'
@@ -30,6 +30,7 @@ gesture_offsets= -3800
 hex_pattern2_Fixed= 'FF FF 00 00 00 00 FF FF FF FF 00 00 00 00 FF FF FF FF'
 hex_pattern5_Fixed='00 00 00 00 00 00 00 FF FF FF FF FF FF FF FF 00 00 00 00 FF FF FF FF FF FF FF FF FF FF FF FF 00 00 00 00 FF FF FF FF FF FF FF FF FF FF FF FF 00 00 00 00 FF FF FF FF FF FF FF FF FF FF FF FF 00 00 00 00 FF FF FF FF FF FF FF FF FF FF FF FF 00 00 00 00 FF FF FF FF FF FF FF FF FF FF FF FF 00 00 00 00 FF FF FF FF FF FF FF FF FF FF FF FF 00 00 00 00 FF FF FF FF FF FF'
 very_last_fixed_pattern= 'FF FF FF FF FF FF FF FF FF FF FF FF 62'
+
 
 
 # Stats offsets
@@ -226,7 +227,7 @@ found_armor= []
 found_ring= []
 file_path_var = tk.StringVar()
 used_unique_ids = set() 
-
+file_path = ""
 # Variables to hold current and new values for each stat
 current_stats_vars = {stat: tk.StringVar(value="N/A") for stat in stats_offsets_for_stats_tap}
 new_stats_vars = {stat: tk.StringVar() for stat in stats_offsets_for_stats_tap}
@@ -308,29 +309,77 @@ def write_character_name(file_path, offset, new_name, byte_size=32):
 
 #
 def open_single_file():
-    file_path = filedialog.askopenfilename(filetypes=[("Save Files", "userdata*")])
+    global file_path
+    # Create a new tkinter window for the platform selection
+    platform_window = tk.Toplevel()
+    platform_window.title("Select Platform")
+
+    # Define a label and two buttons (PS4 and PC)
+    label = tk.Label(platform_window, text="Select the platform for the save file:")
+    label.pack(pady=10)
+
+    def on_ps4_selected():
+        platform_window.destroy()
+        open_userdata_file()
+
+    def on_pc_selected():
+        platform_window.destroy()
+        run_unpacker_pack()
+
+    ps4_button = tk.Button(platform_window, text="PS4", command=on_ps4_selected)
+    ps4_button.pack(padx=20, pady=5)
+
+    pc_button = tk.Button(platform_window, text="PC", command=on_pc_selected)
+    pc_button.pack(padx=20, pady=5)
+
+    # Keep the platform selection window open until the user selects an option
+    platform_window.mainloop()
+
+
+
+def open_userdata_file():
+    global file_path
+    # Ask for file based on PS4 platform (userdata)
+    file_path = filedialog.askopenfilename(title="Select Userdata File", filetypes=[("Userdata Files", "userdata*")])
     if not file_path:
         return
 
-    # Set the file path variable to the selected file
+    # Set the file path variable
     file_path_var.set(file_path)
 
-    # Try to find the character name and display it
-    offset1 = find_hex_offset(file_path, hex_pattern1_Fixed)
-    if offset1 is not None:
-        for distance in possible_name_distances_for_name_tap:
-            name_offset = calculate_offset2(offset1, distance)
-            character_name = find_character_name(file_path, name_offset)
-            if character_name and character_name != "N/A":
-                # Display the single file's character name
-                display_character_names([(file_path, character_name)])
-                return
+    # Get the base file name
+    file_name = os.path.basename(file_path).lower()
 
-    messagebox.showerror("Error", "Unable to find a valid character name in the file!")
+    # Check if the file is userdata0000 to userdata0011
+    if file_name.startswith("userdata") and file_name[8:].isdigit():
+        file_suffix = int(file_name[8:])
+        if 0 <= file_suffix <= 11:
+            print(f"{file_name} file selected (userdata file)")
+
+            # Try to find the character name and display it
+            offset1 = find_hex_offset(file_path, hex_pattern1_Fixed)
+            if offset1 is not None:
+                for distance in possible_name_distances_for_name_tap:
+                    name_offset = calculate_offset2(offset1, distance)
+                    character_name = find_character_name(file_path, name_offset)
+                    if character_name and character_name != "N/A":
+                        # Display the single file's character name
+                        display_character_names([(file_path, character_name)])
+                        return
+
+            messagebox.showerror("Error", "Unable to find a valid character name in the file!")
+            return
+    else:
+        messagebox.showerror("Error", "Invalid userdata file selected.")
+        return
+
+
+            
 
 
 # Function to open the file
 def open_folder():
+    global file_path
     folder_path = filedialog.askdirectory()
     if not folder_path:
         return
@@ -350,6 +399,26 @@ def open_folder():
 
     display_character_names(character_names)
 
+
+def open_folder_pc(): ##for import i think
+    folder_path = filedialog.askdirectory()
+    if not folder_path:
+        return
+
+    userdata_files = sorted(glob.glob(os.path.join(folder_path, "userdata*")))
+    character_names = []
+
+    for file_path in userdata_files:
+        offset1 = find_hex_offset(file_path, hex_pattern1_Fixed)
+        if offset1 is not None:
+            for distance in possible_name_distances_for_name_tap:
+                name_offset = calculate_offset2(offset1, distance)
+                character_name = find_character_name(file_path, name_offset)
+                if character_name and character_name != "N/A":
+                    character_names.append((file_path, character_name))
+                    break
+
+    show_character_names_in_toplevel_ps4(character_names)
     
 def run_unpacker():
 
@@ -384,7 +453,75 @@ def run_unpacker():
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while running the unpacker: {e.stderr}")
         return
+    
+def run_unpacker_pack():
 
+    # Check if the EXE exists
+    exe_path = os.path.join(os.getcwd(), 'Resources', 'Debug', 'DS3SaveUnpacker.exe')
+    if not os.path.exists(exe_path):
+        print("Error: DS3SaveUnpacker.exe not found!")
+        return
+
+    # Run the EXE using subprocess
+    try:
+        if not test_system_compatibility():
+            raise RuntimeError("System is not properly configured to run the executable. Please install Wine for your system.")
+        
+        current_os = platform.system()
+
+        if current_os == 'Linux' or current_os == 'Darwin':  # More explicit syntax
+            result = subprocess.run(['wine', exe_path], check=True, text=True, capture_output=True)
+        else:  # Windows
+            result = subprocess.run([exe_path], check=True, text=True, capture_output=True)
+        
+        # Define the unpacked folder path
+        unpacked_folder = os.path.join(os.getcwd(), 'UnpackedFiles')
+        
+        # After unpacking, create the folder if it doesn't exist (in case EXE does not)
+        if not os.path.exists(unpacked_folder):
+            os.makedirs(unpacked_folder)
+        
+        # Now, show the files in the unpacked folder and search for character names
+        open_folder_and_show_files_pc(unpacked_folder)
+    
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while running the unpacker: {e.stderr}")
+        return
+
+
+###PACK the unpacked files using release exe
+def run_unpacker_repack():
+    # Check if the EXE exists
+    exe_path = os.path.join(os.getcwd(), 'Resources', 'Debug', 'DS3SaveUnpackers.exe')
+    if not os.path.exists(exe_path):
+        print("Error: DS3SaveUnpackers.exe not found!")
+        return
+
+    # Run the EXE using subprocess
+    try:
+        if not test_system_compatibility():
+            raise RuntimeError("System is not properly configured to run the executable. Please install Wine for your system.")
+        
+        current_os = platform.system()
+
+        if current_os == 'Linux' or current_os == 'Darwin':  # More explicit syntax
+            result = subprocess.run(['wine', exe_path], check=True, text=True, capture_output=True)
+        else:  # Windows
+            result = subprocess.run([exe_path], check=True, text=True, capture_output=True)
+        
+        # Define the unpacked folder path
+        unpacked_folder = os.path.join(os.getcwd(), 'UnpackedFiles')
+        
+        # After unpacking, create the folder if it doesn't exist (in case EXE does not)
+        if not os.path.exists(unpacked_folder):
+            os.makedirs(unpacked_folder)
+    
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while running the unpacker: {e.stderr}")
+        return
+   
+
+    
 # Function to open the folder and show files (search character names in them)
 def open_folder_and_show_files(folder_path):
     # Get all userdata files in the folder
@@ -405,11 +542,57 @@ def open_folder_and_show_files(folder_path):
     # Create a Toplevel window to display the character names
     show_character_names_in_toplevel(character_names)
 
+def open_folder_and_show_files_pc(folder_path):
+    # Get all userdata files in the folder
+    userdata_files = sorted(glob.glob(os.path.join(folder_path, "USER_DATA*")))
+    character_names = []
+
+    # Search for character names in the unpacked files
+    for file_path in userdata_files:
+        offset1 = find_hex_offset(file_path, hex_pattern1_Fixed)
+        if offset1 is not None:
+            for distance in possible_name_distances_for_name_tap:
+                name_offset = calculate_offset2(offset1, distance)
+                character_name = find_character_name(file_path, name_offset)
+                if character_name and character_name != "N/A":
+                    character_names.append((file_path, character_name))
+                    break
+
+    # Create a Toplevel window to display the character names
+    display_character_names(character_names)
+
+
+
+def open_single_file_import():
+    # Create a new tkinter window for the platform selection
+    platform_window = tk.Toplevel()
+    platform_window.title("Select Platform")
+
+    # Define a label and two buttons (PS4 and PC)
+    label = tk.Label(platform_window, text="Select the platform for the save file:")
+    label.pack(pady=10)
+
+    def on_ps4_selected():
+        platform_window.destroy()
+        open_folder_pc()
+
+    def on_pc_selected():
+        platform_window.destroy()
+        run_unpacker()
+
+    ps4_button = tk.Button(platform_window, text="PS4 To PC", command=on_ps4_selected)
+    ps4_button.pack(padx=20, pady=5)
+
+    pc_button = tk.Button(platform_window, text="PC To PS4", command=on_pc_selected)
+    pc_button.pack(padx=20, pady=5)
+
+    # Keep the platform selection window open until the user selects an option
+    platform_window.mainloop()
 # Function to display character names in a Toplevel window
 def show_character_names_in_toplevel(character_names):
     # Create a new Toplevel window
     top = tk.Toplevel(window)
-    top.title("Character Names from Unpacked Files")
+    top.title("Character Names from PC Files")
     
     # Create a frame for the character list
     character_list_frame = ttk.Frame(top)
@@ -419,7 +602,34 @@ def show_character_names_in_toplevel(character_names):
     for file_path, name in character_names:
         def on_character_click(selected_file=file_path, selected_name=name):
             # Replace the data in the original file with the selected character's file data
+            ##IF import PC save is selected
             replace_file_data(selected_file, selected_name, top)
+
+        # Create a button for each character name
+        character_button = ttk.Button(
+            character_list_frame,
+            text=name,
+            command=on_character_click,
+            width=25
+        )
+        character_button.pack(fill="x", padx=5, pady=2)
+
+
+def show_character_names_in_toplevel_ps4(character_names):
+    # Create a new Toplevel window
+    top = tk.Toplevel(window)
+    top.title("Character Names from PS4 Files")
+    
+    # Create a frame for the character list
+    character_list_frame = ttk.Frame(top)
+    character_list_frame.pack(padx=20, pady=20)
+
+    # Add buttons for each character name
+    for file_path, name in character_names:
+        def on_character_click(selected_file=file_path, selected_name=name):
+            # Replace the data in the original file with the selected character's file data
+            ##IF import PC save is selected
+            replace_file_data_pc(selected_file, selected_name, top)
 
         # Create a button for each character name
         character_button = ttk.Button(
@@ -476,6 +686,103 @@ def replace_file_data(selected_file, selected_name, top):
     except Exception as e:
         print(f"Error occurred while replacing file data: {e}")
         messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
+###PC import
+def ask_steam_id_window(callback):
+    # Create a new window for entering the Steam ID
+    steam_id_window = tk.Toplevel()
+    steam_id_window.title("Enter Your 17-Digit Steam ID")
+
+    # Label for the input field
+    label = tk.Label(steam_id_window, text="Enter your 17-digit Steam ID:")
+    label.pack(pady=10)
+
+    # Entry widget for the Steam ID
+    steam_id_entry = tk.Entry(steam_id_window, width=30)
+    steam_id_entry.pack(pady=5)
+
+    # Function to handle the submission of the Steam ID
+    def submit_steam_id():
+        steam_id = steam_id_entry.get()
+        
+        if len(steam_id) != 17 or not steam_id.isdigit():
+            messagebox.showerror("Invalid Steam ID", "Steam ID must be exactly 17 digits!")
+            return
+
+        # Convert Steam ID to hexadecimal and then to little-endian format
+        steam_id_hex = format(int(steam_id), 'x').zfill(16)  # Convert to hex and pad to 16 characters
+        steam_id_bytes = bytes.fromhex(steam_id_hex)  # Convert to bytes
+
+        # Reverse for little-endian format
+        steam_id_bytes = steam_id_bytes[::-1]  # Reverse bytes for little-endian
+
+        steam_id_window.destroy()  # Close the Steam ID window
+        callback(steam_id_bytes)  # Call the callback with the Steam ID bytes
+
+    # Submit button
+    submit_button = tk.Button(steam_id_window, text="Submit", command=submit_steam_id)
+    submit_button.pack(pady=10)
+
+# Function to replace the file data with Steam ID and character information
+def replace_file_data_pc(selected_file, selected_name, top):
+    original_file_path = file_path_var.get()  # Path of the currently loaded file
+
+    if not os.path.exists(original_file_path):
+        print("Error: Load your PC Save First!")
+        return
+
+    try:
+        # Copy the content of the selected file into the original file
+        shutil.copy(selected_file, original_file_path)
+        
+        # Update the main window with the new character name
+        current_name_var.set(selected_name)
+
+        # Ask for the Steam ID using the new window and provide a callback to handle the result
+        def handle_steam_id(steam_id_bytes):
+            if not steam_id_bytes:
+                return  # If no valid Steam ID, stop further processing
+
+            # Define the base value, first part remains the same, but the FF byte needs to be replaced
+            value = bytes.fromhex('62 00 00 00 62 00 00 00 01 00 00 00 00 00 00 00 FF FF 89 5D 78 45 63 01 00 01 01')
+
+            # Ensure Steam ID is 8 bytes and replace starting from byte 16 onward
+            if len(steam_id_bytes) == 8:  # Ensure the Steam ID is 8 bytes
+                value = value[:16] + steam_id_bytes + value[24:]  # Replace from byte 16 onward with Steam ID
+            else:
+                messagebox.showerror("Invalid Steam ID", "Steam ID must be exactly 8 bytes!")
+                return
+
+            # Open the original file and replace data
+            with open(original_file_path, 'r+b') as file:
+                offset1 = find_last_hex_offset(original_file_path, very_last_fixed_pattern)
+
+                if offset1 is not None:
+                    offset2 = offset1 + 12
+                    file.seek(offset2)
+                    file.write(value)  # Write the new value with the Steam ID
+                    add_initial_bytes(file)
+                    load_file_data(original_file_path)
+
+                    import_message_var.set(f"Character '{selected_name}' imported successfully!")
+                    top.destroy()
+
+                else:
+                    load_file_data(original_file_path)
+
+                    import_message_var.set(f"Character '{selected_name}' imported successfully!")
+                    messagebox.showinfo("Save imported", "This is an old version save, some of the editor features may not work properly. The save might not work as wanted.")
+                    top.destroy()
+
+        # Open the Steam ID entry window
+        ask_steam_id_window(handle_steam_id)
+
+    except Exception as e:
+        print(f"Error occurred while replacing file data: {e}")
+        messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
+
+
 
 
 def display_character_names(character_names):
@@ -547,10 +854,19 @@ def load_file_data(file_path):
         current_souls_var.set(current_souls if current_souls is not None else "N/A")
 
         # Stats
+        # Stats
         for stat, distance in stats_offsets_for_stats_tap.items():
             stat_offset = calculate_offset2(offset1, distance)
-            current_stat_value = find_value_at_offset(file_path, stat_offset, byte_size=1)
+            
+            # Determine byte size dynamically
+            byte_size = 2 if stat == "Level" else 1
+            
+            # Retrieve the current stat value
+            current_stat_value = find_value_at_offset(file_path, stat_offset, byte_size=byte_size)
+            
+            # Update the corresponding stat variable
             current_stats_vars[stat].set(current_stat_value if current_stat_value is not None else "N/A")
+
 
         # HP
         hp_offset = calculate_offset2(offset1, hp_distance)
@@ -571,6 +887,7 @@ def load_file_data(file_path):
         ng_offset = calculate_offsetng2(offsetng, ng_distance)
         current_ng = find_value_at_offset(file_path, ng_offset)
         current_ng_var.set(current_ng if current_ng is not None else "N/A")
+
 
 
 
@@ -743,6 +1060,78 @@ def update_stat(stat):
         current_stats_vars[stat].set(new_stat_value)
     else:
         messagebox.showerror("Pattern Not Found", "Pattern not found in the file.")
+
+
+##Coordin (no idea how this shit work)
+
+def convert_coordinates_to_hex(x: float, y: float, z: float) -> bytes:
+    """Convert coordinates to little-endian hex format"""
+    x_bytes = struct.pack('<f', x)
+    y_bytes = struct.pack('<f', y)
+    z_bytes = struct.pack('<f', z)
+    return x_bytes + y_bytes + z_bytes
+def read_coordinates(file_path: str, offset: int) -> tuple:
+    """Read x, y, z coordinates from the file at the given offset."""
+    with open(file_path, 'rb') as file:
+        file.seek(offset)
+        data = file.read(12)  # 4 bytes per float, 3 floats
+        x, y, z = struct.unpack('<fff', data)
+    return x, y, z
+def write_coordinates(file_path: str, offset: int, x: float, y: float, z: float):
+    """Write x, y, z coordinates to the file at the given offset."""
+    data = convert_coordinates_to_hex(x, y, z)
+    with open(file_path, 'r+b') as file:  # Open in read and write binary mode
+        file.seek(offset)
+        file.write(data)
+from tkinter import StringVar
+
+# Coordinate input
+
+def update_coordinates():
+        file_path = file_path_var.get()  # Use .get() to retrieve the value
+        pattern = 'FF FF FF FF 00 00 00 00 00 00 00 00 04'
+        offset = find_hex_offset(file_path, pattern)
+        
+        if offset is not None:
+            offset_to_read = offset + 20
+            with open(file_path, 'rb') as file:
+                file.seek(offset_to_read)
+                coordinates = file.read(12)
+            x, y, z = struct.unpack('<fff', coordinates)
+            result_text.delete(1.0, tk.END)
+            result_text.insert(1.0, f"{convert_coordinates_to_hex(x, y, z).hex(' ').upper()}")
+            
+            # Update entries with current values
+            for entry, coord in zip(entries, [x, y, z]):
+                entry.delete(0, tk.END)
+                entry.insert(0, str(coord))
+        else:
+            result_text.delete(1.0, tk.END)
+            result_text.insert(1.0, "Error: Pattern not found in file.")
+
+def save_coordinates():
+    file_path = file_path_var.get()  # Use .get() to retrieve the value
+    pattern = 'FF FF FF FF 00 00 00 00 00 00 00 00 04'
+    offset = find_hex_offset(file_path, pattern)
+    
+    if offset is not None:
+        offset_to_write = offset + 20
+        try:
+            x = float(entries[0].get())
+            y = float(entries[1].get())
+            z = float(entries[2].get())
+            data = convert_coordinates_to_hex(x, y, z)
+            with open(file_path, 'r+b') as file:
+                file.seek(offset_to_write)
+                file.write(data)
+            update_coordinates()  # Refresh display after writing
+        except ValueError:
+            result_text.delete(1.0, tk.END)
+            result_text.insert(1.0, "Error: Please enter valid numbers.")
+    else:
+        result_text.delete(1.0, tk.END)
+        result_text.insert(1.0, "Error: Pattern not found in file.")
+###############################################
 
 ## Add rings( similar to items)
 def find_and_replace_pattern_with_ring_and_update_counters(ring_name):
@@ -1258,15 +1647,15 @@ def show_goods_magic_list_bulk():
     # Define categories
     categories = {
         "Consumables": list(inventory_goods_magic_hex_patterns_bulk.items())[:51],
-        "Covenant": list(inventory_goods_magic_hex_patterns_bulk.items())[51:59],
-        "Souls": list(inventory_goods_magic_hex_patterns_bulk.items())[59:81],
-        "Boss Souls": list(inventory_goods_magic_hex_patterns_bulk.items())[81:104],
-        "Upgrade Materials (SLABS not included)": list(inventory_goods_magic_hex_patterns_bulk.items())[104:109],
-        "Gems": list(inventory_goods_magic_hex_patterns_bulk.items())[109:124],
-        "Coals": list(inventory_goods_magic_hex_patterns_bulk.items())[124:128],
-        "Ashes/Bone": list(inventory_goods_magic_hex_patterns_bulk.items())[128:147],
-        "Tome/Scroll": list(inventory_goods_magic_hex_patterns_bulk.items())[147:160],
-        "Magic": list(inventory_goods_magic_hex_patterns_bulk.items())[160:271],
+        "Covenant": list(inventory_goods_magic_hex_patterns_bulk.items())[51:57],
+        "Souls": list(inventory_goods_magic_hex_patterns_bulk.items())[57:78],
+        "Boss Souls": list(inventory_goods_magic_hex_patterns_bulk.items())[78:101],
+        "Upgrade Materials (SLABS not included)": list(inventory_goods_magic_hex_patterns_bulk.items())[101:106],
+        "Gems": list(inventory_goods_magic_hex_patterns_bulk.items())[106:121],
+        "Coals": list(inventory_goods_magic_hex_patterns_bulk.items())[121:125],
+        "Ashes/Bone": list(inventory_goods_magic_hex_patterns_bulk.items())[125:144],
+        "Tome/Scroll": list(inventory_goods_magic_hex_patterns_bulk.items())[144:157],
+        "Magic": list(inventory_goods_magic_hex_patterns_bulk.items())[157:268],
         
     }
 
@@ -2108,6 +2497,17 @@ def delete_first_4_bytes(file):
         file.truncate()
     else:
         print("File is too small to delete 4 bytes.")
+def add_initial_bytes(file):
+    # Read the existing file data
+    file.seek(0)  # Ensure the file pointer is at the start
+    original_data = file.read()
+
+    # Define the 4 bytes to add at the start of the file
+    prefix_bytes = bytes.fromhex('00 00 0C 00')
+
+    # Move the file pointer to the beginning and write the new data
+    file.seek(0)
+    file.write(prefix_bytes + original_data)  # Prepend the new bytes
 
 
 def delete_bytes_after_bffff_armor(file):
@@ -3577,6 +3977,7 @@ items_list_frame = ttk.Frame(items_tab)
 items_list_frame.pack(fill="x", padx=10, pady=5)
 
 
+
 #ddd
 left_frame = ttk.Frame(window, width=200)
 left_frame.pack(side="left", fill="y")
@@ -3601,9 +4002,10 @@ button_width = 15  # Adjust this value as needed
 button_width = 15  # Adjust this value to make buttons wider or narrower
 button_padding = 5  # Set padding for buttons
 
-ttk.Button(left_frame, text="Load Folder", width=button_width, command=open_folder).pack(pady=10, padx=10)  # Added padx
-ttk.Button(left_frame, text="Load File", width=button_width, command=open_single_file).pack(pady=10, padx=10)  # Added padx
-ttk.Button(left_frame, text="Import PC Save", width=button_width, command=run_unpacker).pack(pady=10, padx=10)
+ttk.Button(left_frame, text="Load Folder (PS4)", width=button_width, command=open_folder).pack(pady=10, padx=10)  # Added padx
+ttk.Button(left_frame, text="Load File (PS4/PC)", width=button_width, command=open_single_file).pack(pady=10, padx=10)  # Added padx
+ttk.Button(left_frame, text="Save PC file", width=button_width, command=run_unpacker_repack).pack(pady=10, padx=10)
+ttk.Button(left_frame, text="Import Save", width=button_width, command= open_single_file_import).pack(pady=10, padx=10)
 
 # Create the "Toggle Theme" button in the left frame at the bottom
 theme_button = ttk.Button(left_frame, text="Toggle Theme", width=button_width, command=toggle_theme)
@@ -3877,12 +4279,49 @@ notebook.add(storage_box_tab, text="Storage Box")
 
 
 # Add a main "World Flag" tab to the main notebook
+
 world_flag_tab = ttk.Frame(notebook)
 notebook.add(world_flag_tab, text="World Flag")
 
-# Create a sub-notebook within the "World Flag" tab for "Bosses" and other sub-tabs
 world_flag_sub_notebook = ttk.Notebook(world_flag_tab)
 world_flag_sub_notebook.pack(expand=1, fill="both")
+
+# Create the "Coordinates" tab
+# Main coordinates tab
+coordinates_tab = ttk.Frame(world_flag_sub_notebook)
+world_flag_sub_notebook.add(coordinates_tab, text="Teleport Coordinates (Local)")
+
+# File path input (example)
+file_path_var = StringVar()
+
+# Input frame for X, Y, Z coordinates
+input_frame = tk.Frame(coordinates_tab)
+input_frame.pack(padx=20, pady=10)
+
+entries = []
+for i, label in enumerate(["X:", "Y:", "Z:"]):
+    tk.Label(input_frame, text=label).grid(row=i, column=0, sticky='w')
+    entry = tk.Entry(input_frame)
+    entry.grid(row=i, column=1, padx=10)
+    entry.insert(0, "0.0")  # Default value
+    entries.append(entry)
+
+# Buttons
+read_button = tk.Button(input_frame, text="Get Current Coordinates", command=update_coordinates)
+read_button.grid(row=3, column=0, pady=10)
+
+save_button = tk.Button(input_frame, text="Apply Coordinates", command=save_coordinates)
+save_button.grid(row=3, column=1, pady=10)
+
+# Result display
+result_frame = tk.Frame(coordinates_tab)
+result_frame.pack(padx=20, pady=10)
+
+result_label = tk.Label(result_frame, text="Current Coordinates (Hex):")
+result_label.pack()
+
+result_text = tk.Text(result_frame, height=3, width=40)
+result_text.pack(pady=5)
 
 # Create the "Bosses" tab as a sub-tab within the "World Flag" sub-notebook
 boss_tab = ttk.Frame(world_flag_sub_notebook)
@@ -4023,7 +4462,7 @@ my_label.pack(side="top", anchor="ne", padx=10, pady=5)
 
 we_label = tk.Label(window, text="USE AT YOUR OWN RISK. EDITING STATS AND HP COULD GET YOU BANNED", anchor="w", padx=10)
 we_label.pack(side="bottom", anchor="nw", padx=10, pady=5)
-
+messagebox.showinfo("Welcome", "Not responsible for any loss of data, use at your own risk. Always backup your save files before editing, Adding Key items will get you banned")
 # Run 
 window.mainloop()
 
