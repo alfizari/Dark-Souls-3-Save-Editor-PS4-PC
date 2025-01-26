@@ -430,15 +430,8 @@ def run_unpacker():
 
     # Run the EXE using subprocess
     try:
-        if not test_system_compatibility():
-            raise RuntimeError("System is not properly configured to run the executable. Please install Wine for your system.")
         
-        current_os = platform.system()
-
-        if current_os == 'Linux' or current_os == 'Darwin':  # More explicit syntax
-            result = subprocess.run(['wine', exe_path], check=True, text=True, capture_output=True)
-        else:  # Windows
-            result = subprocess.run([exe_path], check=True, text=True, capture_output=True)
+        subprocess.run([exe_path], check=True, text=True, capture_output=True)
         
         # Define the unpacked folder path
         unpacked_folder = os.path.join(os.getcwd(), 'UnpackedFiles')
@@ -464,15 +457,7 @@ def run_unpacker_pack():
 
     # Run the EXE using subprocess
     try:
-        if not test_system_compatibility():
-            raise RuntimeError("System is not properly configured to run the executable. Please install Wine for your system.")
-        
-        current_os = platform.system()
-
-        if current_os == 'Linux' or current_os == 'Darwin':  # More explicit syntax
-            result = subprocess.run(['wine', exe_path], check=True, text=True, capture_output=True)
-        else:  # Windows
-            result = subprocess.run([exe_path], check=True, text=True, capture_output=True)
+        subprocess.run([exe_path], check=True, text=True, capture_output=True)
         
         # Define the unpacked folder path
         unpacked_folder = os.path.join(os.getcwd(), 'UnpackedFiles')
@@ -499,15 +484,7 @@ def run_unpacker_repack():
 
     # Run the EXE using subprocess
     try:
-        if not test_system_compatibility():
-            raise RuntimeError("System is not properly configured to run the executable. Please install Wine for your system.")
-        
-        current_os = platform.system()
-
-        if current_os == 'Linux' or current_os == 'Darwin':  # More explicit syntax
-            result = subprocess.run(['wine', exe_path], check=True, text=True, capture_output=True)
-        else:  # Windows
-            result = subprocess.run([exe_path], check=True, text=True, capture_output=True)
+        subprocess.run([exe_path], check=True, text=True, capture_output=True)
         
         # Define the unpacked folder path
         unpacked_folder = os.path.join(os.getcwd(), 'UnpackedFiles')
