@@ -2302,15 +2302,12 @@ def increment_counters(file, fixed_pattern_offset, counter1_distance=473, counte
 def log_file_data_at_offset(file, offset, length=16):
     file.seek(offset)
     data = file.read(length)
-    
 
 
-
-
+INITIAL_LOAD_LIMIT = 16
 
 
 def show_weapons_list():
-   
     weapons_window = tk.Toplevel(window)
     weapons_window.title("Add Weapons")
     weapons_window.geometry("600x400")
@@ -2341,8 +2338,12 @@ def show_weapons_list():
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
+    current_displayed = []
+
+    debounce_id = None
+
     def filter_weapons():
-        
+
         for widget in scrollable_frame.winfo_children():
             widget.destroy()
 
@@ -2351,7 +2352,10 @@ def show_weapons_list():
             k: v for k, v in inventory_weapons_hex_patterns.items() if search_term in k.lower()
         }
 
-        for weapon_name, weapon_id in filtered_weapons.items():
+        # Limit quantity, to avoid slow interface
+        weapons_to_show = list(filtered_weapons.items())[:INITIAL_LOAD_LIMIT]
+
+        for weapon_name, weapon_id in weapons_to_show:
             weapon_frame = ttk.Frame(scrollable_frame)
             weapon_frame.pack(fill="x", padx=5, pady=2)
 
@@ -2366,10 +2370,46 @@ def show_weapons_list():
             )
             add_button.pack(side="right", padx=5)
 
-    # Filter weapons on search input
-    search_entry.bind("<KeyRelease>", lambda event: filter_weapons())
+        current_displayed.clear()
+        current_displayed.extend(weapons_to_show)
 
-    # Initially populate the list with all weapons
+        # Pagination
+        def load_more_weapons(event):
+            if canvas.yview()[1] == 1.0:
+                new_weapons = list(filtered_weapons.items())[
+                              len(current_displayed):len(current_displayed) + INITIAL_LOAD_LIMIT]
+                if new_weapons:
+                    for weapon_name, weapon_id in new_weapons:
+                        weapon_frame = ttk.Frame(scrollable_frame)
+                        weapon_frame.pack(fill="x", padx=5, pady=2)
+
+                        tk.Label(weapon_frame, text=weapon_name, anchor="w").pack(side="left", fill="x", expand=True)
+
+                        add_button = ttk.Button(
+                            weapon_frame,
+                            text="Add",
+                            command=lambda name=weapon_name: select_weapon_upgrade(name, weapons_window)
+                        )
+                        add_button.pack(side="right", padx=5)
+
+                    current_displayed.extend(new_weapons)
+
+        canvas.bind_all("<Configure>", load_more_weapons)
+
+    # debounce
+    def on_search_change(event):
+        nonlocal debounce_id
+
+        # cancel last search
+        if debounce_id is not None:
+            weapons_window.after_cancel(debounce_id)
+
+        # Search delay (500ms)
+        debounce_id = weapons_window.after(500, filter_weapons)
+
+    # Filter
+    search_entry.bind("<KeyRelease>", on_search_change)
+
     filter_weapons()
 
 
@@ -3316,17 +3356,17 @@ def find_weapon_items(file_path, start_offset=0, range_size=543168):
 
 # for armors will show some unused items
 def find_armor_items(file_path, start_offset=71550, range_size=None):
- 
+
     global found_armor
     found_armor = []
 
     with open(file_path, 'rb') as file:
         # Set the file position to the specified starting offset
         file.seek(start_offset)
-        
+
         # Read only the specified range
         data_chunk = file.read(range_size) if range_size is not None else file.read()
-        
+
         for armor_name, armor_hex in armor_item_patterns.items():
             armor_bytes = bytes.fromhex(armor_hex)
             if armor_bytes in data_chunk:
