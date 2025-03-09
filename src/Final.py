@@ -2453,11 +2453,12 @@ def show_weapons_window_bulk():
 
 def bulk_add_weapons(parent_window):
     try:
-        for weapon_name in inventory_weapons_hex_patterns.keys():
+        limited_weapons = list(inventory_weapons_hex_patterns.keys())[:241]  # Take only the first 241 items
+        for weapon_name in limited_weapons:
             add_weapon(weapon_name, 0, parent_window)
-        messagebox.showinfo("Success", "All weapons added successfully at upgrade level 0.")
+        messagebox.showinfo("Success", "Weapons added successfully at upgrade level 0.")
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to add all weapons: {e}")
+        messagebox.showerror("Error", f"Failed to add weapons: {e}")
 ## ADD Armor
 
 hex_pattern3_fixed = (
