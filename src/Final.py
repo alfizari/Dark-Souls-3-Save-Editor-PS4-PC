@@ -16,6 +16,7 @@ import struct
 #just a flag
 # Constants
 hex_pattern1_Fixed = '00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00'
+fix='00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00'
 possible_name_distances_for_name_tap = [-199]
 souls_distance = -219
 hp_distance= -303
@@ -372,10 +373,66 @@ def open_userdata_file():
     else:
         messagebox.showerror("Error", "Invalid userdata file selected.")
         return
+def find_character_name_offset(file_path, character_name):
+    name_bytes = character_name.encode('utf-16-le')
+    with open(file_path, 'rb') as f:
+        data = f.read()
+        index = data.find(name_bytes)
+        if index != -1:
+            print(f"[FOUND] '{character_name}' found at offset {hex(index)} in {os.path.basename(file_path)}")
+            return index
+        else:
+            print(f"[NOT FOUND] '{character_name}' not found in {os.path.basename(file_path)}")
+            return None
+
+def fixmysave():
+
+    global file_path
+        # Create a new tkinter window for the platform selection
+    platform_window = tk.Toplevel()
+    platform_window.title("Select Platform")
+
+    # Define a label and two buttons (PS4 and PC)
+    label = tk.Label(platform_window, text="Select the platform for the save file:")
+    label.pack(pady=10)
 
 
-            
+    def on_ps4_selected():
+        fix1 = bytes.fromhex("00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00")
+        platform_window.destroy()
+        open_userdata_file()
+        offset1 = find_hex_offset(file_path, hex_pattern1_Fixed)
+        if offset1 is not None:
+            # Ask the user to input the character name
+            char_name = simpledialog.askstring("Character Name", "Enter your character's name:")
+            if char_name:
+                # Find the offset of the character name
+                name_offset = find_character_name_offset(file_path, char_name)
+                if name_offset is not None:
+                    # Calculate the new offset using a known distance
+                    with open(file_path, 'r+b') as file:
+                        
+                        distance_to_pattern = 199  # example distance, replace with actual
+                        offset1 = name_offset + distance_to_pattern
+                        file.seek(offset1)
+                        file.write(fix1)
+                        messagebox.showinfo("Success", "Save file fixed successfully!")
+                else:
+                    messagebox.showerror("Error", "Character name not found in save file.")
 
+    def on_pc_selected():
+        platform_window.destroy()
+        run_unpacker_pack_fix()
+        run_unpacker_repack()
+
+    ps4_button = tk.Button(platform_window, text="PS4", command=on_ps4_selected)
+    ps4_button.pack(padx=20, pady=5)
+
+    pc_button = tk.Button(platform_window, text="PC", command=on_pc_selected)
+    pc_button.pack(padx=20, pady=5)
+
+    # Keep the platform selection window open until the user selects an option
+    platform_window.mainloop()
 
 # Function to open the file
 def open_folder():
@@ -472,6 +529,31 @@ def run_unpacker_pack():
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while running the unpacker: {e.stderr}")
         return
+def run_unpacker_pack_fix():
+
+    # Check if the EXE exists
+    exe_path = os.path.join(os.getcwd(), 'Resources', 'Debug', 'DS3SaveUnpacker.exe')
+    if not os.path.exists(exe_path):
+        print("Error: DS3SaveUnpacker.exe not found!")
+        return
+
+    # Run the EXE using subprocess
+    try:
+        subprocess.run([exe_path], check=True, text=True, capture_output=True)
+        
+        # Define the unpacked folder path
+        unpacked_folder = os.path.join(os.getcwd(), 'UnpackedFiles')
+        
+        # After unpacking, create the folder if it doesn't exist (in case EXE does not)
+        if not os.path.exists(unpacked_folder):
+            os.makedirs(unpacked_folder)
+        
+        # Now, show the files in the unpacked folder and search for character names
+        open_folder_and_show_files_pc_fix(unpacked_folder)
+    
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while running the unpacker: {e.stderr}")
+        return
 
 
 ###PACK the unpacked files using release exe
@@ -515,6 +597,8 @@ def open_folder_and_show_files(folder_path):
                 if character_name and character_name != "N/A":
                     character_names.append((file_path, character_name))
                     break
+        else:
+            messagebox.showerror("Error", "Unable to find a valid character name in the file!")
 
     # Create a Toplevel window to display the character names
     show_character_names_in_toplevel(character_names)
@@ -534,6 +618,46 @@ def open_folder_and_show_files_pc(folder_path):
                 if character_name and character_name != "N/A":
                     character_names.append((file_path, character_name))
                     break
+    display_character_names(character_names)
+
+def open_folder_and_show_files_pc_fix(folder_path):
+    messagebox.showinfo("Info", "Enter the chatacter name on the save USER_DATA000 is slot 0. USER_DATA001 is slot 1 and so on. Click cancel to skip.")
+    # Get all userdata files in the folder
+    valid_filenames = {f"USER_DATA00{i}" for i in range(0, 10)}
+    userdata_files = sorted(
+        f for f in glob.glob(os.path.join(folder_path, "USER_DATA*"))
+        if os.path.basename(f) in valid_filenames
+    )
+    character_names = []
+    fix1 = bytes.fromhex("00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00")
+    
+
+
+    # Search for character names in the unpacked files
+    for file_path in userdata_files:
+        offset1 = find_hex_offset(file_path, hex_pattern1_Fixed)
+        if offset1 is not None:
+            # Ask the user to input the character name
+            char_name = simpledialog.askstring(
+    "Character Name",
+    f"Enter your character's name for file:\n{os.path.basename(file_path)}"
+)
+
+            if char_name:
+                # Find the offset of the character name
+                name_offset = find_character_name_offset(file_path, char_name)
+                if name_offset is not None:
+                    # Calculate the new offset using a known distance
+                    with open(file_path, 'r+b') as file:
+                        
+                        distance_to_pattern = 199  # example distance, replace with actual
+                        offset1 = name_offset + distance_to_pattern
+                        file.seek(offset1)
+                        file.write(fix1)
+                        messagebox.showinfo("Success", "Save file fixed successfully!")
+                else:
+                    messagebox.showerror("Error", "Character name not found in save file.")
+
 
     # Create a Toplevel window to display the character names
     display_character_names(character_names)
@@ -4024,6 +4148,7 @@ ttk.Button(left_frame, text="Load Folder (PS4)", width=button_width, command=ope
 ttk.Button(left_frame, text="Load File (PS4/PC)", width=button_width, command=open_single_file).pack(pady=10, padx=10)  # Added padx
 ttk.Button(left_frame, text="Save PC file", width=button_width, command=run_unpacker_repack).pack(pady=10, padx=10)
 ttk.Button(left_frame, text="Import Save", width=button_width, command= open_single_file_import).pack(pady=10, padx=10)
+ttk.Button(left_frame, text="Fix my Save", width=button_width, command=fixmysave).pack(pady=10, padx=10)
 
 # Create the "Toggle Theme" button in the left frame at the bottom
 theme_button = ttk.Button(left_frame, text="Toggle Theme", width=button_width, command=toggle_theme)
