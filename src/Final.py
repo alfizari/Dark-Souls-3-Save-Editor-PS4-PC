@@ -13,6 +13,7 @@ import shutil
 import platform
 from system_test import test_system_compatibility
 import struct
+import datetime
 #just a flag
 # Constants
 hex_pattern1_Fixed = '00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00'
@@ -274,6 +275,206 @@ def write_value_at_offset(file_path, offset, value, byte_size=4):
     with open(file_path, 'r+b') as file:
         file.seek(offset)
         file.write(value_bytes)
+
+
+# dump function
+def dump_save_data_to_file(file_path, output_path):
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write("="*80 + "\n")
+            f.write("DARK SOULS 3 SAVE DATA DUMP\n")
+            f.write("="*80 + "\n\n")
+
+            # CHARACTER INFO
+            f.write("-"*80 + "\n")
+            f.write("CHARACTER INFORMATION\n")
+            f.write("-"*80 + "\n")
+            offset1 = find_hex_offset(file_path, hex_pattern1_Fixed)
+            if offset1 is not None:
+                # Character Name
+                for distance in possible_name_distances_for_name_tap:
+                    name_offset = calculate_offset2(offset1, distance)
+                    character_name = find_character_name(file_path, name_offset)
+                    if character_name and character_name != "N/A":
+                        f.write(f"Character Name: {character_name}\n")
+                        break
+
+                # Souls
+                souls_offset = calculate_offset2(offset1, souls_distance)
+                current_souls = find_value_at_offset(file_path, souls_offset)
+                f.write(f"Souls: {current_souls if current_souls is not None else 'N/A'}\n")
+
+                # HP, FP, Stamina
+                hp_offset = calculate_offset2(offset1, hp_distance)
+                current_hp = find_value_at_offset(file_path, hp_offset)
+                f.write(f"HP: {current_hp if current_hp is not None else 'N/A'}\n")
+
+                fp_offset = calculate_offset2(offset1, fp_distance)
+                current_fp = find_value_at_offset(file_path, fp_offset)
+                f.write(f"FP: {current_fp if current_fp is not None else 'N/A'}\n")
+
+                stamina_offset = calculate_offset2(offset1, stamina_distance)
+                current_stamina = find_value_at_offset(file_path, stamina_offset)
+                f.write(f"Stamina: {current_stamina if current_stamina is not None else 'N/A'}\n")
+
+            # New Game cycle
+            offset_ng = find_hex_offset(file_path, hex_pattern5_Fixed)
+            if offset_ng is not None:
+                ng_offset = calculate_offset2(offset_ng, ng_distance)
+                current_ng = find_value_at_offset(file_path, ng_offset)
+                f.write(f"New Game: {current_ng if current_ng is not None else 'N/A'}\n")
+
+            f.write("\n")
+
+            # STATS
+            f.write("-"*80 + "\n")
+            f.write("STATS\n")
+            f.write("-"*80 + "\n")
+            if offset1 is not None:
+                for stat, distance in stats_offsets_for_stats_tap.items():
+                    stat_offset = calculate_offset2(offset1, distance)
+                    byte_size = 2 if stat == "Level" else 1
+                    current_stat_value = find_value_at_offset(file_path, stat_offset, byte_size=byte_size)
+                    f.write(f"{stat}: {current_stat_value if current_stat_value is not None else 'N/A'}\n")
+            f.write("\n")
+
+            # BOSSES
+            f.write("-"*80 + "\n")
+            f.write("BOSSES\n")
+            f.write("-"*80 + "\n")
+            offset2 = find_last_hex_offset(file_path, hex_pattern2_Fixed)
+            if offset2 is not None:
+                for boss, defeat_hex in bosses_data.items():
+                    defeat_value = int(defeat_hex, 16)
+                    boss_distance = bosses_offsets_for_bosses_tap.get(boss)
+                    if boss_distance is not None:
+                        boss_offset = calculate_offset2(offset2, boss_distance)
+                        boss_value = find_value_at_offset(file_path, boss_offset, byte_size=1)
+                        status = "Defeated" if boss_value == defeat_value else "Alive"
+                        f.write(f"{boss}: {status}\n")
+            f.write("\n")
+
+            # BONFIRES
+            f.write("-"*80 + "\n")
+            f.write("BONFIRES\n")
+            f.write("-"*80 + "\n")
+            if offset2 is not None:
+                for bonfire, bonfire_hex in bonfire_data.items():
+                    bonfire_value = int(bonfire_hex, 16)
+                    bonfire_distance = bonfire_offsets_for_bonfire_tap.get(bonfire)
+                    if bonfire_distance is not None:
+                        bonfire_offset = calculate_offset2(offset2, bonfire_distance)
+                        read_value = find_value_at_offset(file_path, bonfire_offset, byte_size=1)
+                        if read_value != bonfire_value:
+                            read_value = find_value_at_offset(file_path, bonfire_offset, byte_size=2)
+                        status = "Unlocked" if read_value == bonfire_value else "Locked"
+                        f.write(f"{bonfire}: {status}\n")
+            f.write("\n")
+
+            # NPCs
+            f.write("-"*80 + "\n")
+            f.write("NPCs\n")
+            f.write("-"*80 + "\n")
+            if offset2 is not None:
+                for npc, npc_hex in npc_data.items():
+                    npc_value = int(npc_hex, 16)
+                    npc_distance = npc_offsets_for_npc_tap.get(npc)
+                    if npc_distance is not None:
+                        npc_offset = calculate_offset2(offset2, npc_distance)
+                        read_value = find_value_at_offset(file_path, npc_offset, byte_size=1)
+                        if read_value != npc_value:
+                            read_value = find_value_at_offset(file_path, npc_offset, byte_size=2)
+                        status = "At Shrine/Friendly" if read_value == npc_value else "N/A"
+                        f.write(f"{npc}: {status}\n")
+            f.write("\n")
+
+            # INVENTORY - Items
+            f.write("-"*80 + "\n")
+            f.write("INVENTORY - ITEMS\n")
+            f.write("-"*80 + "\n")
+            if offset1 is not None:
+                key_offset = offset1 + goods_magic_offset
+                items = find_key_items(file_path, key_offset)
+                if items:
+                    for item_name, quantity in items:
+                        f.write(f"{item_name}: {quantity}\n")
+                else:
+                    f.write("No items found\n")
+            f.write("\n")
+
+            # INVENTORY - Weapons
+            f.write("-"*80 + "\n")
+            f.write("INVENTORY - WEAPONS\n")
+            f.write("-"*80 + "\n")
+            weapons = find_weapon_items(file_path)
+            if weapons:
+                for weapon in weapons:
+                    f.write(f"{weapon}\n")
+            else:
+                f.write("No weapons found\n")
+            f.write("\n")
+
+            # INVENTORY - Armor
+            f.write("-"*80 + "\n")
+            f.write("INVENTORY - ARMOR\n")
+            f.write("-"*80 + "\n")
+            armor = find_armor_items(file_path)
+            if armor:
+                for armor_piece in armor:
+                    f.write(f"{armor_piece}\n")
+            else:
+                f.write("No armor found\n")
+            f.write("\n")
+
+            # INVENTORY - Rings
+            f.write("-"*80 + "\n")
+            f.write("INVENTORY - RINGS\n")
+            f.write("-"*80 + "\n")
+            rings = find_ring_items(file_path)
+            if rings:
+                for ring_name, quantity in rings:
+                    f.write(f"{ring_name}: {quantity}\n")
+            else:
+                f.write("No rings found\n")
+            f.write("\n")
+
+            # STORAGE BOX
+            f.write("-"*80 + "\n")
+            f.write("STORAGE BOX\n")
+            f.write("-"*80 + "\n")
+            if offset1 is not None:
+                storage_offset = offset1 + storage_box_distance
+                storage_items = find_storage_items_with_quantity(file_path, storage_offset, drawer_range)
+                if storage_items:
+                    for item_name, quantity, _ in storage_items:
+                        f.write(f"{item_name}: {quantity}\n")
+                else:
+                    f.write("No items in storage\n")
+
+            f.write("\n")
+            f.write("="*80 + "\n")
+            f.write(f"Dump created: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("="*80 + "\n")
+
+        print(f"Save data dumped to: {output_path}")
+        return True
+    except Exception as e:
+        print(f"Error creating dump file: {e}")
+        return False
+
+def on_export_save_data(file_path):
+    output_path = filedialog.asksaveasfilename(
+        title="Export Save Data",
+        initialfile = "save_file_plain_dump",
+        defaultextension=".txt",
+        filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+    )
+    if not output_path:
+        return
+    dump_save_data_to_file(file_path, output_path)
+    messagebox.showinfo("Export Complete", f"Save data successfully exported to:\n{output_path}")
+
+
 
 # Functions for character name
 def find_character_name(file_path, offset, byte_size=32):
@@ -1001,7 +1202,6 @@ def load_file_data(file_path):
         refresh_boss_tab()
         refresh_bonfire_tab()
         refresh_npc_tab()
-
 
        
 
@@ -4593,6 +4793,20 @@ goods_label.pack(padx=10, pady=10, fill="x")
 storage_text = """
 600 IS THE MAXIMIM.
 """
+
+# Export Tab
+exporttab = ttk.Frame(notebook)
+notebook.add(exporttab, text="Export")
+
+export_instructions = "Export your save data to a plain text file for analysis or record-keeping."
+tk.Label(exporttab, text=export_instructions, wraplength=500, justify="left", anchor="nw").pack(padx=10, pady=10, fill="x")
+
+ttk.Button(
+    exporttab, 
+    text="Export as Plain Text", 
+    command=lambda: on_export_save_data(file_path_var.get())
+).pack(pady=20, padx=20)
+
 
 
 storage_label = tk.Label(storage_box_tab, text=storage_text, wraplength=400, justify="left", anchor="nw")
