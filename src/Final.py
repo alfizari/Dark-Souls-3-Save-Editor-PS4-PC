@@ -1203,7 +1203,6 @@ def load_file_data(file_path):
         refresh_bonfire_tab()
         refresh_npc_tab()
 
-        on_export_save_data(file_path)
        
 
 ###### for updating values
@@ -4794,6 +4793,20 @@ goods_label.pack(padx=10, pady=10, fill="x")
 storage_text = """
 600 IS THE MAXIMIM.
 """
+
+# Export Tab
+exporttab = ttk.Frame(notebook)
+notebook.add(exporttab, text="Export")
+
+export_instructions = "Export your save data to a plain text file for analysis or record-keeping."
+tk.Label(exporttab, text=export_instructions, wraplength=500, justify="left", anchor="nw").pack(padx=10, pady=10, fill="x")
+
+ttk.Button(
+    exporttab, 
+    text="Export as Plain Text", 
+    command=lambda: on_export_save_data(file_path_var.get())
+).pack(pady=20, padx=20)
+
 
 
 storage_label = tk.Label(storage_box_tab, text=storage_text, wraplength=400, justify="left", anchor="nw")
