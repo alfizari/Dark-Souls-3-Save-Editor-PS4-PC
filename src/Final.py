@@ -13,6 +13,7 @@ import shutil
 import platform
 from system_test import test_system_compatibility
 import struct
+import datetime
 #just a flag
 # Constants
 hex_pattern1_Fixed = '00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00'
@@ -277,17 +278,9 @@ def write_value_at_offset(file_path, offset, value, byte_size=4):
 
 
 # dump function
-def dump_save_data_to_file(file_path):
-    import datetime
-    from pathlib import Path
-
-    desktop = Path.home() / "Desktop"
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"DS3_Save_Dump_{timestamp}.txt"
-    dump_path = desktop / filename
-
+def dump_save_data_to_file(file_path, output_path):
     try:
-        with open(dump_path, 'w', encoding='utf-8') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             f.write("="*80 + "\n")
             f.write("DARK SOULS 3 SAVE DATA DUMP\n")
             f.write("="*80 + "\n\n")
@@ -463,11 +456,23 @@ def dump_save_data_to_file(file_path):
             f.write(f"Dump created: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("="*80 + "\n")
 
-        print(f"Save data dumped to: {dump_path}")
+        print(f"Save data dumped to: {output_path}")
         return True
     except Exception as e:
         print(f"Error creating dump file: {e}")
         return False
+
+def on_export_save_data(file_path):
+    output_path = filedialog.asksaveasfilename(
+        title="Export Save Data",
+        initialfile = "save_file_plain_dump",
+        defaultextension=".txt",
+        filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+    )
+    if not output_path:
+        return
+    dump_save_data_to_file(file_path, output_path)
+    messagebox.showinfo("Export Complete", f"Save data successfully exported to:\n{output_path}")
 
 
 
@@ -1198,7 +1203,7 @@ def load_file_data(file_path):
         refresh_bonfire_tab()
         refresh_npc_tab()
 
-        dump_save_data_to_file(file_path)
+        on_export_save_data(file_path)
        
 
 ###### for updating values
