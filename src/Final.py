@@ -1,7 +1,7 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-import os
+import sys
 import main_ds3 as BE
 
 BG       = "#0e0e0e"
@@ -470,6 +470,7 @@ class DS3Editor(tk.Tk):
 
         self._status(f"Loaded: {name}  ({path})")
         self._toast(f"Character '{name}' loaded")
+        BE.sort_inventory_index(self.data)
         self._refresh_all_tabs()
 
     def _do_save(self):
@@ -891,6 +892,18 @@ class DS3Editor(tk.Tk):
         tk.Label(row, text="Qty:", bg=BG, fg=ASH, font=FONT_B).pack(side="left")
         self._spawn_goods_qty = tk.StringVar(value="99")
         tk.Entry(row, textvariable=self._spawn_goods_qty, width=6, **ENTRY_STYLE).pack(side="left", padx=4)
+        self._stack_goods_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(
+            row,
+            text="Stack",
+            variable=self._stack_goods_var,
+            bg=BG,
+            fg=ASH,
+            selectcolor=BG2,
+            activebackground=BG,
+            activeforeground=ASH
+        ).pack(side="left", padx=(8, 4))
+
         ghost_btn(row, "  Add", self._spawn_single_good).pack(side="left", padx=8)
 
         tk.Frame(top, bg=GOLD, height=1).pack(fill="x", padx=8, pady=8)
@@ -1053,8 +1066,12 @@ class DS3Editor(tk.Tk):
         pass
 
     def _spawn_single_good(self):
-        self._spawn_item(self._spawn_goods_var.get(), "goods",
-                         qty=self._safe_int(self._spawn_goods_qty.get(), 99))
+        self._spawn_item(
+            self._spawn_goods_var.get(),
+            "goods",
+            qty=self._safe_int(self._spawn_goods_qty.get(), 99),
+            stack=self._stack_goods_var.get()
+        )
 
     def _bulk_category(self, category):
         if self.data is None:
@@ -1158,7 +1175,7 @@ class DS3Editor(tk.Tk):
     def _spawn_single_ring(self):
         self._spawn_item(self._spawn_ring_var.get(), "rings", qty=1)
 
-    def _spawn_item(self, name, item_type, qty=99):
+    def _spawn_item(self, name, item_type, qty=99, stack=False):
         if self.data is None:
             messagebox.showwarning("No File", "Load a character first.")
             return
@@ -1167,7 +1184,7 @@ class DS3Editor(tk.Tk):
         if BE:
             try:
                 result = BE.add_goods_rings(self.data, name, qty,
-                                             stack=False, item_type=item_type)
+                                             stack=stack, item_type=item_type)
                 self.data = result[0] if isinstance(result, tuple) else result
                 self._toast(f"Added: {name} ×{qty}")
                 self._log_spawn(f"+ {name} ×{qty}")
@@ -1265,7 +1282,8 @@ class DS3Editor(tk.Tk):
                 row.grid_remove()
             else:
                 row.grid()
-
+    if not sys:
+        exit()
     def _filter_bf_grid(self):
         q = self._bf_search.get().lower()
         for bf, row in self._bonfire_rows.items():
