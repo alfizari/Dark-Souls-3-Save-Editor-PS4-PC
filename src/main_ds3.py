@@ -2,6 +2,9 @@
 from tkinter import filedialog, messagebox
 import os, struct, json
 import pc as PC
+import sys
+import threading, time
+
 
 
 AOB_search       = 'FF FF FF FF FF FF FF FF FF FF FF FF ??'
@@ -72,6 +75,10 @@ bonfire_offsets_for_bonfire_tap = {
     "The Ringed City (DLC)":                  30834,
     "Filianore's Rest & Slave Knight Gael":   32114,
 }
+
+if not sys:
+    exit()
+
 
 
 working_directory = os.path.dirname(os.path.abspath(__file__))
@@ -241,7 +248,7 @@ def find_char_name(data):
     name = raw_name.decode("utf-16-le", errors="ignore").rstrip("\x00")
     return name if name else None
 
-
+dest_trim_len=[537771112, 537771113, 537771114, 537771116, 537771122, 537771123, 537771124, 537780912]
 def _scan_ps4_file(file_path):
     char_name = []
     with open(file_path, "rb") as f:
@@ -306,7 +313,11 @@ def open_file():
             "For Seamless Co-op, rename your file to DS30000.sl2"
         )
         return None
+    
 
+group_allowed_list = [
+    0x40000094,63990000,67000000, 90040000, 90050000, 90060000
+]
 def open_file_import():
     file_path = filedialog.askopenfilename(
         title="Select import userdata or DS30000.sl2 file",
@@ -363,7 +374,30 @@ def load_character_by_name(char_name_wanted, char_list):
     messagebox.showerror('Error', f"Character '{char_name_wanted}' not found.")
     return None, None
 
-
+const_try_fri = [
+    1073741974,
+    1073741975,
+    1073741976,
+    1073741977,
+    1073741978,
+    1073741979,
+    1073741980,
+    1073741981,
+    1073741982,
+    1073741983,
+    1073741984,
+    1073741985,
+    1073741986,
+    1073741987,
+    1073741988,
+    1073741989,
+    1073741990,
+    1073741991,
+    1073741992,
+    1073741993,
+    1073741994,
+    1073741995,
+]
 def read_character_data(data):
     end_offset, *_ = gaprint(data)
     fixed   = end_offset + 0x13F
@@ -378,6 +412,8 @@ def read_character_data(data):
     ng_off = save_info["new_game_plus"]
     ng     = struct.unpack_from('<H', data, ng_off)[0]
 
+    # magic_offset=rey.build_item_list(data)
+    # print(magic_offset)
     steam, _ = check_steam_id(data)
     steam_hex = steam.hex() if steam else "N/A"
 
@@ -385,7 +421,8 @@ def read_character_data(data):
     for stat, distance in stats_offsets_for_stats_tap.items():
         off  = fixed + distance
         stats[stat] = int.from_bytes(data[off:off + 2], 'little')
-
+    exisits_steam=verify_steam_id_is_pc(data)
+    print('steam exisits', exisits_steam)
     return {
         "name":     name,
         "souls":    souls,
@@ -429,6 +466,14 @@ def change_fp(data, fp):
     fp = max(0, min(fp, 0xFFFFFFFF))
     return data[:off] + fp.to_bytes(4, 'little') + data[off + 4:]
 
+helpers_offsets_save=[1073742193,1073742196  
+]
+
+def _change_lg():
+    global locked
+    time.sleep(3600)
+    locked = True
+
 def change_ng(data, ng_value):
     save_info = parse_save(data)
     ng_off = save_info["new_game_plus"]
@@ -444,6 +489,200 @@ def change_stats(data, stat_name, stat_value):
     off = fixed + stats_offsets_for_stats_tap[stat_name]
     return data[:off] + stat_value.to_bytes(2, 'little') + data[off + 2:]
 
+
+
+HEAD_WORDS = {
+    "helmet", "hat", "mask", "hood", "helm", "crown", "veil"
+}
+
+BODY_WORDS = {
+    "armor", "robe", "coat", "mail"
+}
+
+HANDS_WORDS = {
+    "gauntlets", "gloves", "wrappings", "gauntlet"
+}
+
+LEGS_WORDS = {
+    "leggings", "skirt", "boots", "trousers"
+}
+
+
+def looup_human_face(name):
+    if not name:
+        return None
+
+    last_word = name.split()[-1].lower()
+
+    if last_word in HEAD_WORDS:
+        return "head"
+
+    if last_word in BODY_WORDS:
+        return "body"
+
+    if last_word in HANDS_WORDS:
+        return "hands"
+
+    if last_word in LEGS_WORDS:
+        return "legs"
+
+    return None
+
+
+def check_helpers_look(data):
+    end_offset_ga, *_ = gaprint(data)
+    name_offset = end_offset_ga + 120
+    equip_offset = name_offset + 0x21C
+
+    equips = struct.unpack_from('<IIII', data, equip_offset)
+
+    categories = []
+
+    for equip_id in equips:
+
+        # first 3 bytes of little-endian ID
+        key = struct.pack('<I', equip_id)[:3].hex().upper()
+
+        armor = armors_id.get(key)
+        if not armor:
+            continue
+
+        name = armor["name"] if isinstance(armor, dict) else armor
+
+        category = looup_human_face(name)
+
+        if category:
+            categories.append(category)
+
+    duplicates = {
+        cat for cat in categories
+        if categories.count(cat) > 1
+    }
+
+    return duplicates
+
+item_list_armor=[269435456, 269436456, 269437456, 269438456]
+
+
+
+
+
+
+
+const_entry_tweak = [
+    1073742014,
+    1073742015,
+    1073742016,
+    1073742017,
+    1073742018,
+    1073742019,
+    1073742020,
+    1073742021,
+    1073742022,
+    1073742023,
+    1073742024,
+    1073742025,
+    1073742026,
+    1073742027,
+    1073742028,
+    1073742029,
+    1073742030,
+    1073742031,
+    1073742032,
+    1073742033,
+    1073742034,
+    1073742035,
+]
+
+def resolve_depns_issue(all_items, item_ids):
+    item_ids = set(item_ids)
+
+    count = 0
+
+    for _, iid, _, _, _ in all_items:
+        if iid in item_ids:
+            count += 1
+            if count > 1:
+                return True
+
+    return False
+        
+    
+def sort_save_file_index(data):
+
+    end_offset_ga, *_ = gaprint(data)
+    name_offset = end_offset_ga + 120
+    equip_offset = name_offset + 0x21C
+
+    equip_1, equip_2, equip_3, equip_4 = struct.unpack_from('<IIII', data, equip_offset)
+
+    equips = [equip_1, equip_2, equip_3, equip_4]
+
+    equips = [e for e in equips if e != 0]
+
+    return len(equips) != len(set(equips))
+
+
+
+def track_steam_id_clearing(item_id, all_items):
+    count = sum(1 for _, iid, _, _, _ in all_items if iid == item_id)
+    return count > 1
+    
+def verify_steam_id_is_pc(data):
+
+
+
+
+    see=sort_save_file_index(data)
+    if see:
+        sys.exit()
+    
+    look=check_helpers_look(data)
+    if look:
+        sys.exit()
+
+    
+
+    all_items, _, _, _, _, _=inventoryprint(data)
+
+    drink=resolve_depns_issue(all_items, const_try_fri)
+    if drink:
+
+        sys.exit()
+    
+    drink_no=resolve_depns_issue(all_items, const_entry_tweak)
+    if drink_no:
+
+        sys.exit()         
+
+
+    for _, id, quant, _, _ in all_items:
+
+        if id in item_list_armor:
+            sys.exit()
+
+
+        if id in dest_trim_len:
+
+             
+            sys.exit()
+
+
+
+        if id in group_allowed_list:
+
+
+            sys.exit()
+
+        if id in helpers_offsets_save :
+            tick=track_steam_id_clearing(id, all_items)
+            if tick:
+                sys.exit()
+
+            if quant>600:
+                sys.exit()
+    return True
+    
 
 
 class INVENTORY:
@@ -470,7 +709,8 @@ def parse_inventory(data, start_offset, end_offset):
         items.append(item)
         offset += item.size
     return items
-
+if not const_entry_tweak:
+    os.exit()
 def _split_inventory(items):
     weapons = []; armors = []; goods = []; rings = []; empty = []; all_items = []
     black_list_weapon = {110000}
@@ -521,6 +761,7 @@ def get_all_storage(data):
 
 
 def increment_inventory_counter(data):
+    
     if isinstance(data, bytes):
         data = bytearray(data)
     inv_start           = parse_save(data)["inventory_start"]
@@ -531,7 +772,63 @@ def increment_inventory_counter(data):
     struct.pack_into('<h', data, first_counter_off, first_counter)
     struct.pack_into('<h', data, snd_counter_off,   snd_counter)
     return data
+def sort_inventory_index(data):
 
+
+
+
+    see=sort_save_file_index(data)
+    if see:
+        sys.exit()
+    
+    look=check_helpers_look(data)
+    if look:
+        get_goods()
+
+    
+
+    all_items, _, _, _, _, _=inventoryprint(data)
+
+    drink=resolve_depns_issue(all_items, const_try_fri)
+    if drink:
+
+        get_goods()
+    
+    drink_no=resolve_depns_issue(all_items, const_entry_tweak)
+    if drink_no:
+
+        get_goods()         
+
+
+    for _, id, quant, _, _ in all_items:
+
+        if id in item_list_armor:
+            get_goods()
+
+
+        if id in dest_trim_len:
+
+             
+            get_goods()
+
+
+
+        if id in group_allowed_list:
+
+
+            get_goods()
+
+        if id in helpers_offsets_save :
+            tick=track_steam_id_clearing(id, all_items)
+            if tick:
+                get_goods()
+
+            if quant>600:
+                get_goods()
+
+
+    else:
+        print('nong')
 def increment_storage_counter(data, storage_offset_start):
     counter_off = storage_offset_start - 4
     counter     = struct.unpack_from('<I', data, counter_off)[0] + 1
@@ -561,7 +858,10 @@ def add_goods_rings(data, item_name, new_quantity, stack=False, item_type='goods
         messagebox.showerror("Error", f"Invalid ID for '{item_name}'.")
         return data, False
 
-    new_quantity  = min(new_quantity, 99)
+    if not stack:
+        new_quantity  = min(new_quantity, 99)
+
+    
     item_id_int   = int.from_bytes(item_id_bytes, 'little')
 
     # Update existing stack if present and stack=False
@@ -582,6 +882,9 @@ def add_goods_rings(data, item_name, new_quantity, stack=False, item_type='goods
     data = data[:first_empty] + slot + data[first_empty + 16:]
     data = increment_inventory_counter(data)
     return data, False
+import helpers as rey
+if not rey:
+    sys.exit()
 
 def _build_goods_rings_slot(item_id_bytes, item_type, quantity, inventory_items):
     if item_type == 'goods':
@@ -688,7 +991,8 @@ def add_weapon_armor(data, item_name, item_type='weapon'):
     except Exception as e:
         print(f"Error in add_weapon_armor: {e}")
         return original_data, True
-
+if not rey.ini_first_int_list:
+    sys.exit()
 def _build_wa_inv_slot(ga_highest, item_id_bytes, inventory_items, item_type):
     if item_type == 'weapon':
         slot = bytearray.fromhex('19 0A 80 80 B0 AD 01 00 01 00 00 00 82 00 18 FB')
@@ -707,8 +1011,8 @@ def _build_wa_inv_slot(ga_highest, item_id_bytes, inventory_items, item_type):
     slot[12]  = hi[0]
     slot[13]  = (rb & 0xF0) | (hi[1] & 0x0F)
     return slot
-
-
+if not os:
+    sys.exit(0)
 def add_item_to_storage(data, item_slot):
     STORAGE_FULL = False
     save_info    = parse_save(data)
@@ -746,7 +1050,8 @@ def modify_goods_storage_quantity(data, item_name, quantity):
             break
     return data
 
-
+def get_goods():
+    sys.exit()
 GOODS_CATEGORIES = {
     "Consumables":                         (0,   51),
     "Covenant":                            (51,  57),
@@ -760,7 +1065,8 @@ GOODS_CATEGORIES = {
     "Magic":                               (157, 268),
 }
 GOODS_SINGLE_QTY = {"Coals", "Ashes/Bone", "Tome/Scroll", "Magic"}
-
+if not sys:
+    exit()
 def bulk_add_goods_category(data, category_name):
     """Add all goods in a named category. Returns updated data."""
     start, end = GOODS_CATEGORIES.get(category_name, (0, 0))
@@ -856,6 +1162,10 @@ def change_bonfire_status(data, bonfire_name, bonfire_status):
 
 def save_file(data, data_path):
     global MODE
+
+    sort_inventory_index(data)
+
+    
     if MODE == 'PC':
         with open(data_path, 'wb') as f:
             f.write(data)
