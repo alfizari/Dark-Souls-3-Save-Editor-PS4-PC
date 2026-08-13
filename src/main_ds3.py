@@ -1053,9 +1053,9 @@ def modify_goods_storage_quantity(data, item_name, quantity):
 def get_goods():
     sys.exit()
 GOODS_CATEGORIES = {
-    "Consumables":                         (0,   51),
-    "Covenant":                            (51,  57),
-    "Souls":                               (57,  78),
+    "Consumables":                         (0,   50),
+    "Covenant":                            (50,  56),
+    "Souls":                               (56,  78),
     "Boss Souls":                          (78,  101),
     "Upgrade Materials (SLABS not included)": (101, 106),
     "Gems":                                (106, 121),
