@@ -366,6 +366,11 @@
     "Rare Ring of Sacrifice": "FC 4E 00 20",
     "Ring of Evil Eye +3": "71 50 00 20",
     
+    "White Sign Soapstone": "64 00 00 40",
+    "Red Sign Soapstone": "65 00 00 40",
+    "Red Eye Orb": "66 00 00 40",
+    "Black Eye Orb": "AB 00 00 40",
+    "Estus Flask": "D3 00 00 40",
     "Roster of Knights": "6C 00 00 40",
     "Cracked Red Eye Orb": "6F 00 00 40",
     "Divine Blessing": "F0 00 00 40",
@@ -700,6 +705,11 @@
     "Holy Remains": "35 08 00 40",
     "Braille Divine Sunlight Tome": "49 08 00 40",
     "Gwyndolin's Finger": "58 08 00 40",
+
+    "No Helm": "A0 BB 0D 10",
+    "No Armor": "88 BF 0D 10",
+    "No Gauntlets": "70 C3 0D 10",
+    "No Leggings": "58 C7 0D 10",
     "Fallen Knight Helm": "C0 EA 21 11",
     "Fallen Knight Armor": "A8 EE 21 11",
     "Fallen Knight Gauntlets": "90 F2 21 11",
